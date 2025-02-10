@@ -93,14 +93,14 @@ class Conversations:
         return self._conversation
 
     def get_session(self):
-        if not self._session or not self._session.is_active:
-            self._session = get_session()
-        return self._session
+        if not self._db or not self._db.is_active:
+            self._db = get_session()
+        return self._db
 
     def close(self):
-        if self._session:
-            self._session.close()
-            self._session = None
+        if self._db:
+            self._db.close()
+            self._db = None
 
     def __enter__(self) -> "Conversations":
         return self.get_session()
