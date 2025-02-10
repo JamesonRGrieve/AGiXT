@@ -777,8 +777,7 @@ class Conversations:
     def update_message_by_id(self, message_id, new_message):
 
         if not self.conversation:
-            logging.info(f"No conversation found.")
-            self._db.close()
+            logging.info(f"No conversation found.") 
             return
 
         message = self.get_message_by_id(message_id)
@@ -801,7 +800,7 @@ class Conversations:
     def get_conversation_id(self):
 
         if not self.conversation:
-            self.conversation = Conversation(
+            self._conversation = Conversation(
                 name=self.conversation_name, user_id=self.user_data.id
             )
             self._db.add(self.conversation)
