@@ -103,7 +103,8 @@ class Conversations:
             self._db = None
 
     def __enter__(self) -> "Conversations":
-        return self.get_session()
+        self._db = self.get_session()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
