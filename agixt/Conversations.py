@@ -62,10 +62,15 @@ def get_conversation_name_by_id(conversation_id, user_id):
 
 
 class Conversations:
+    def get_session(self):
+        if not self._db or not self._db.is_active:
+            self._db = get_session()
+        return self._db
+
     def __init__(self, conversation_name="-", user=DEFAULT_USER):
         self.conversation_name = conversation_name
         self.user = user
-        self._db: Optional[Session] = None
+        self._db: Optional[Session] = self.get_session()
         self._user_data = None
         self._conversation = None
 
@@ -90,11 +95,6 @@ class Conversations:
             )
         return self._conversation
 
-    def get_session(self):
-        if not self._db or not self._db.is_active:
-            self._db = get_session()
-        return self._db
-
     def close(self):
         if self._db:
             self._db.close()
@@ -105,6 +105,9 @@ class Conversations:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
+
+    def __del__(self):
         self.close()
 
     def export_conversation(self):
@@ -875,7 +878,6 @@ class Conversations:
         return new_name
 
     def get_last_activity_id(self):
-
         if not self.conversation:
             return None
         last_activity = (
