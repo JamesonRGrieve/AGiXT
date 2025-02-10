@@ -1,5 +1,5 @@
 from MagicalAuth import MagicalAuth, impersonate_user, verify_api_key, is_admin
-from Conversations import Conversations, get_conversation_name_by_id
+from Conversations import Conversations
 from Providers import get_providers_with_details
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict
@@ -1489,7 +1489,7 @@ class Subscription:
                     # Get current conversation if ID provided
                     current_conversation = None
                     if conversation_id:
-                        conversation_name = get_conversation_name_by_id(
+                        conversation_name = Conversations.get_conversation_name_by_id(
                             conversation_id=conversation_id,
                             user_id=auth_manager.user_id,
                         )
@@ -1763,7 +1763,7 @@ class Query:
     ) -> ConversationDetail:
         """Get conversation details and paginated messages"""
         user, auth, magical = await get_user_from_context(info)
-        conversation_name = get_conversation_name_by_id(
+        conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=conversation_id, user_id=magical.user_id
         )
         # Get conversation metadata
@@ -2770,7 +2770,7 @@ class Mutation:
             try:
                 conversation_id = str(uuid.UUID(conversation_name))
                 if conversation_id:
-                    conversation_name = get_conversation_name_by_id(
+                    conversation_name = Conversations.get_conversation_name_by_id(
                         conversation_id=conversation_id, user_id=auth.user_id
                     )
             except:

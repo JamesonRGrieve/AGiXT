@@ -2,7 +2,7 @@ from DB import get_session, TaskCategory, TaskItem, Agent
 from Globals import getenv
 from agixtsdk import AGiXTSDK
 from MagicalAuth import MagicalAuth
-from Conversations import get_conversation_name_by_id
+from Conversations import Conversations
 from sqlalchemy.orm import joinedload
 from concurrent.futures import ThreadPoolExecutor
 import datetime
@@ -137,7 +137,7 @@ class Task:
                 if task.category.name == "Follow-ups" and task.agent_id:
                     agent = session.query(Agent).get(task.agent_id)
                     if agent:
-                        conversation_name = get_conversation_name_by_id(
+                        conversation_name = Conversations.get_conversation_name_by_id(
                             conversation_id=task.memory_collection,
                             user_id=self.user_id,
                         )
