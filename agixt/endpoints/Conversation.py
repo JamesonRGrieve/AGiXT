@@ -1,29 +1,31 @@
-from fastapi import APIRouter, Depends, Header
-from typing import Dict
-from ApiClient import verify_api_key, get_api_client, Agent
-from Conversations import Conversations
-from XT import AGiXT
-from Models import (
-    HistoryModel,
-    ConversationHistoryModel,
-    ConversationHistoryMessageModel,
-    UpdateConversationHistoryMessageModel,
-    ResponseMessage,
-    LogInteraction,
-    RenameConversationModel,
-    UpdateMessageModel,
-    DeleteMessageModel,
-    ConversationFork,
-    ConversationListResponse,
-    ConversationDetailResponse,
-    ConversationHistoryResponse,
-    NotificationResponse,
-    MessageIdResponse,
-)
 import json
 import uuid
 from datetime import datetime
+from typing import Dict
+
+from ApiClient import Agent, get_api_client, verify_api_key
+from Conversations import Conversations
+from fastapi import APIRouter, Depends, Header
 from MagicalAuth import MagicalAuth, get_user_id
+from XT import AGiXT
+
+from Models import (
+    ConversationDetailResponse,
+    ConversationFork,
+    ConversationHistoryMessageModel,
+    ConversationHistoryModel,
+    ConversationHistoryResponse,
+    ConversationListResponse,
+    DeleteMessageModel,
+    HistoryModel,
+    LogInteraction,
+    MessageIdResponse,
+    NotificationResponse,
+    RenameConversationModel,
+    ResponseMessage,
+    UpdateConversationHistoryMessageModel,
+    UpdateMessageModel,
+)
 
 app = APIRouter()
 
@@ -484,7 +486,7 @@ async def get_tts(
         conversation_id=conversation_id, user_id=auth.user_id
     )
     with Conversations(conversation_name=conversation_name, user=user) as c:
-        message = c.get_message_by_id(message_id=message_id)
+        message = c.get_message_by_id_old(message_id=message_id)
         agent_name = c.get_last_agent_name()
         ApiClient = get_api_client(authorization=authorization)
         agent = Agent(agent_name=agent_name, user=user, ApiClient=ApiClient)

@@ -685,7 +685,7 @@ class Conversations:
         self._db.delete(message)
         self._db.commit()
 
-    def get_message_by_id(self, message_id):
+    def get_message_by_id_old(self, message_id):
         if not self.conversation:
             logging.info(f"No conversation found.")
             return
