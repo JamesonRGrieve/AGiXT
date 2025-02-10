@@ -111,7 +111,17 @@ class Conversations:
     def __del__(self):
         self.close()
 
-    def get_message(self, message_id: str):
+    def get_message_by_content(self, message_content: str):
+        return (
+            self._db.query(Message)
+            .filter(
+                Message.conversation_id == self.conversation.id,
+                Message.content == message_content,
+            )
+            .first()
+        )
+
+    def get_message_by_id(self, message_id: str):
         return (
             self._db.query(Message)
             .filter(
@@ -654,19 +664,11 @@ class Conversations:
         if not self.conversation:
             logging.info(f"No conversation found.")
             return
-        message_id = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.content == message,
-            )
-            .first()
-        ).id
-        message = self.get_message(message_id)
+        message = self.get_message_by_content(message)
 
         if not message:
             logging.info(
-                f"No message found with ID '{message_id}' in conversation '{self.conversation_name}'."
+                f"No message found with ID '{message.id}' in conversation '{self.conversation_name}'."
             )
             return
         self._db.delete(message)
@@ -708,7 +710,7 @@ class Conversations:
         if not self.conversation:
             logging.info(f"No conversation found.")
             return
-        message = self.get_message(message_id)
+        message = self.get_message_by_id(message_id)
 
         if not message:
             logging.info(
@@ -723,18 +725,10 @@ class Conversations:
         if not self.conversation:
             logging.info(f"No conversation found.")
             return
-        message_id = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.content == message,
-            )
-            .first()
-        ).id
-        message = self.get_message(message_id)
+        message = self.get_message_by_content(message)
         if not message:
             logging.info(
-                f"No message found with ID '{message_id}' in conversation '{self.conversation_name}'."
+                f"No message found with ID '{message.id}' in conversation '{self.conversation_name}'."
             )
             return
         message.feedback_received = not message.feedback_received
@@ -746,18 +740,10 @@ class Conversations:
             logging.info(f"No conversation found.")
             self._db.close()
             return
-        message_id = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.content == message,
-            )
-            .first()
-        ).id
-        message = self.get_message(message_id)
+        message = self.get_message_by_content(message)
         if not message:
             logging.info(
-                f"No message found with ID '{message_id}' in conversation '{self.conversation_name}'."
+                f"No message found with ID '{message.id}' in conversation '{self.conversation_name}'."
             )
             return
         feedback_received = message.feedback_received
@@ -768,15 +754,7 @@ class Conversations:
         if not self.conversation:
             logging.info(f"No conversation found.")
             return
-        message_id = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.content == message,
-            )
-            .first()
-        ).id
-        message = self.get_message(message_id)
+        message = self.get_message_by_content(message)
         if not message:
             logging.info(
                 f"No message found with ID '{message_id}' in conversation '{self.conversation_name}'."
@@ -792,7 +770,7 @@ class Conversations:
             self._db.close()
             return
 
-        message = self.get_message(message_id)
+        message = self.get_message_by_id(message_id)
 
         if not message:
             logging.info(
