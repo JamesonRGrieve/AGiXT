@@ -62,10 +62,6 @@ def get_conversation_name_by_id(conversation_id, user_id):
 
 
 class Conversations:
-    def get_session(self):
-        if not self._db or not self._db.is_active:
-            self._db = get_session()
-        return self._db
 
     def __init__(self, conversation_name="-", user=DEFAULT_USER):
         self.conversation_name = conversation_name
@@ -73,6 +69,11 @@ class Conversations:
         self._db: Optional[Session] = self.get_session()
         self._user_data = None
         self._conversation = None
+
+    def get_session(self):
+        if not self._db or not self._db.is_active:
+            self._db = get_session()
+        return self._db
 
     @property
     def user_data(self):
