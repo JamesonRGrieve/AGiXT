@@ -34,8 +34,8 @@ def get_conversation_id_by_name(conversation_name, user_id):
         .first()
     )
     if not conversation:
-        c = Conversations(conversation_name=conversation_name, user=user.email)
-        conversation_id = c.get_conversation_id()
+        with Conversations(conversation_name=conversation_name, user=user.email) as c:
+            conversation_id = c.get_conversation_id()
     else:
         conversation_id = str(conversation.id)
     session.close()
