@@ -133,10 +133,10 @@ async def learn_text(
         agent_name=agent_name, user=user, ApiClient=ApiClient
     ).get_agent_config()
     if len(data.collection_number) > 4:
-        conversation = Conversations(
+        with Conversations(
             conversation_name=data.collection_number, user=user
-        )
-        collection_number = conversation.get_conversation_id()
+        ) as conversation:
+            collection_number = conversation.get_conversation_id()
     else:
         collection_number = str(data.collection_number)
     memory = Memories(
@@ -172,9 +172,11 @@ async def learn_file(
     collection_number = str(file.collection_number)
     conversation_name = None
     if len(collection_number) > 4:
-        conversation = Conversations(conversation_name=collection_number, user=user)
-        collection_number = conversation.get_conversation_id()
-        conversation_name = collection_number
+        with Conversations(
+            conversation_name=collection_number, user=user
+        ) as conversation:
+            collection_number = conversation.get_conversation_id()
+            conversation_name = collection_number
     agent = AGiXT(
         user=user,
         agent_name=agent_name,
@@ -243,11 +245,11 @@ async def learn_url(
         user_input=f"I am browsing {url.url} and collecting data from it to learn more.",
         conversation_name=conversation_name,
     )
-    c = Conversations(conversation_name=conversation_name, user=user)
-    c.log_interaction(
-        role=agent_name,
-        message=f"URL [{url.url}]({url.url}) learned on {timestamp} to collection `{url.collection_number}`.",
-    )
+    with Conversations(conversation_name=conversation_name, user=user) as c:
+        c.log_interaction(
+            role=agent_name,
+            message=f"URL [{url.url}]({url.url}) learned on {timestamp} to collection `{url.collection_number}`.",
+        )
     return ResponseMessage(message=response)
 
 
