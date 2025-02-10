@@ -254,29 +254,20 @@ class Conversations:
 
     def get_conversation(self, limit=100, page=1):
 
-        if not self.conversation_name:
-            self.conversation_name = "-"
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+        if not self.conversation:
             # Create the conversation
-            conversation = Conversation(
+            self._conversation = Conversation(
                 name=self.conversation_name, user_id=self.user_data.id
             )
-            self._db.add(conversation)
+            self._db.add(self._conversation)
             self._db.commit()
         else:
             # Mark all notifications as read for this conversation
             (
                 self._db.query(Message)
                 .filter(
-                    Message.conversation_id == conversation.id, Message.notify == True
+                    Message.conversation_id == self.conversation.id,
+                    Message.notify == True,
                 )
                 .update({"notify": False})
             )
@@ -284,7 +275,7 @@ class Conversations:
         offset = (page - 1) * limit
         messages = (
             self._db.query(Message)
-            .filter(Message.conversation_id == conversation.id)
+            .filter(Message.conversation_id == self.conversation.id)
             .order_by(Message.timestamp.asc())
             .limit(limit)
             .offset(offset)
@@ -312,17 +303,7 @@ class Conversations:
 
     def fork_conversation(self, message_id):
 
-        # Get the original conversation
-        original_conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-
-        if not original_conversation:
+        if not self.conversation:
             logging.info(f"No conversation found to fork.")
             return None
 
@@ -330,7 +311,7 @@ class Conversations:
         target_message = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == original_conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.id == message_id,
             )
             .first()
@@ -344,7 +325,7 @@ class Conversations:
         messages = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == original_conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.timestamp <= target_message.timestamp,
             )
             .order_by(Message.timestamp.asc())
@@ -396,23 +377,12 @@ class Conversations:
             return None
 
     def get_activities(self, limit=100, page=1):
-        if not self.conversation_name:
-            self.conversation_name = "-"
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
-
+        if not self.conversation:
             return {"activities": []}
         offset = (page - 1) * limit
         messages = (
             self._db.query(Message)
-            .filter(Message.conversation_id == conversation.id)
+            .filter(Message.conversation_id == self.conversation.id)
             .order_by(Message.timestamp.asc())
             .limit(limit)
             .offset(offset)
@@ -435,21 +405,11 @@ class Conversations:
         return {"activities": return_activities}
 
     def get_subactivities(self, activity_id):
-        if not self.conversation_name:
-            self.conversation_name = "-"
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+        if not self.conversation:
             return ""
         messages = (
             self._db.query(Message)
-            .filter(Message.conversation_id == conversation.id)
+            .filter(Message.conversation_id == self.conversation.id)
             .order_by(Message.timestamp.asc())
             .all()
         )
@@ -479,21 +439,11 @@ class Conversations:
         return f"### Detailed Activities:\n{subactivities}"
 
     def get_activities_with_subactivities(self):
-        if not self.conversation_name:
-            self.conversation_name = "-"
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+        if not self.conversation:
             return ""
         messages = (
             self._db.query(Message)
-            .filter(Message.conversation_id == conversation.id)
+            .filter(Message.conversation_id == self.conversation.id)
             .order_by(Message.timestamp.asc())
             .all()
         )
@@ -542,21 +492,12 @@ class Conversations:
         return f"### Detailed Activities:\n{activities}"
 
     def new_conversation(self, conversation_content=[]):
-        # Check if the conversation already exists for the agent
-        existing_conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not existing_conversation:
+        if not self.conversation:
             # Create a new conversation
-            conversation = Conversation(
+            self._conversation = Conversation(
                 name=self.conversation_name, user_id=self.user_data.id
             )
-            self._db.add(conversation)
+            self._db.add(self._conversation)
             self._db.commit()
             if conversation_content != []:
                 for interaction in conversation_content:
@@ -564,29 +505,18 @@ class Conversations:
                         role=interaction["role"],
                         message=interaction["message"],
                     )
-        else:
-            conversation = existing_conversation
-        return conversation
+        return self.conversation
 
     def get_thinking_id(self, agent_name):
-        if not self.conversation_name:
-            self.conversation_name = "-"
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             return None
 
         # Get the most recent non-thinking activity message
         current_parent_activity = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.content.like("[ACTIVITY]%"),
                 Message.content != "[ACTIVITY] Thinking.",
             )
@@ -598,7 +528,7 @@ class Conversations:
         current_thinking = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.content == "[ACTIVITY] Thinking.",
             )
             .order_by(Message.timestamp.desc())
@@ -647,14 +577,7 @@ class Conversations:
                 )
             else:
                 message = message.replace("[SUBACTIVITY] ", "[ACTIVITY] ")
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
+
         notify = False
         if role.lower() == "user":
             role = "USER"
@@ -663,8 +586,8 @@ class Conversations:
                 "[SUBACTIVITY]"
             ):
                 notify = True
-        if not conversation:
-            conversation = self.new_conversation()
+        if not self.conversation:
+            self.new_conversation()
             self._db.flush()
         if message.endswith("\n"):
             message = message[:-1]
@@ -674,22 +597,22 @@ class Conversations:
             new_message = Message(
                 role=role,
                 content=message,
-                conversation_id=conversation.id,
+                conversation_id=self.conversation.id,
                 notify=notify,
             )
             # Update the conversation's updated_at timestamp
-            conversation.updated_at = func.now()
+            self.conversation.updated_at = func.now()
         except Exception as e:
-            conversation = self.new_conversation()
+            self.new_conversation()
             self._db.flush()
             new_message = Message(
                 role=role,
                 content=message,
-                conversation_id=conversation.id,
+                conversation_id=self.conversation.id,
                 notify=notify,
             )
             # Update the conversation's updated_at timestamp
-            conversation.updated_at = func.now()
+            self.conversation.updated_at = func.now()
 
         self._db.add(new_message)
         self._db.commit()
@@ -707,46 +630,28 @@ class Conversations:
         return message_id
 
     def delete_conversation(self):
-        if not self.conversation_name:
-            self.conversation_name = "-"
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+        if not self.conversation:
             logging.info(f"No conversation found.")
             return
 
         self._db.query(Message).filter(
-            Message.conversation_id == conversation.id
+            Message.conversation_id == self.conversation.id
         ).delete()
         self._db.query(Conversation).filter(
-            Conversation.id == conversation.id,
+            Conversation.id == self.conversation.id,
             Conversation.user_id == self.user_data.id,
         ).delete()
         self._db.commit()
+        self._conversation = None
 
     def delete_message(self, message):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-
-        if not conversation:
+        if not self.conversation:
             logging.info(f"No conversation found.")
             return
         message_id = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.content == message,
             )
             .first()
@@ -754,7 +659,7 @@ class Conversations:
         message = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.id == message_id,
             )
             .first()
@@ -769,23 +674,13 @@ class Conversations:
         self._db.commit()
 
     def get_message_by_id(self, message_id):
-
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-
-        if not conversation:
+        if not self.conversation:
             logging.info(f"No conversation found.")
             return
         message = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.id == message_id,
             )
             .first()
@@ -801,22 +696,12 @@ class Conversations:
         return message.content
 
     def get_last_agent_name(self):
-        # Get the last role in the conversation that isn't "user"
-        if not self.conversation_name:
-            self.conversation_name = "-"
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             return "AGiXT"
         message = (
             self._db.query(Message)
-            .filter(Message.conversation_id == conversation.id)
+            .filter(Message.conversation_id == self.conversation.id)
             .filter(Message.role != "USER")
             .filter(Message.role != "user")
             .order_by(Message.timestamp.desc())
@@ -828,22 +713,13 @@ class Conversations:
 
     def delete_message_by_id(self, message_id):
 
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-
-        if not conversation:
+        if not self.conversation:
             logging.info(f"No conversation found.")
             return
         message = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.id == message_id,
             )
             .first()
@@ -858,21 +734,14 @@ class Conversations:
         self._db.commit()
 
     def toggle_feedback_received(self, message):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             logging.info(f"No conversation found.")
             return
         message_id = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.content == message,
             )
             .first()
@@ -880,7 +749,7 @@ class Conversations:
         message = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.id == message_id,
             )
             .first()
@@ -894,22 +763,15 @@ class Conversations:
         self._db.commit()
 
     def has_received_feedback(self, message):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             logging.info(f"No conversation found.")
             self._db.close()
             return
         message_id = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.content == message,
             )
             .first()
@@ -917,7 +779,7 @@ class Conversations:
         message = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.id == message_id,
             )
             .first()
@@ -931,21 +793,14 @@ class Conversations:
         return feedback_received
 
     def update_message(self, message, new_message):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             logging.info(f"No conversation found.")
             return
         message_id = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.content == message,
             )
             .first()
@@ -953,7 +808,7 @@ class Conversations:
         message = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.id == message_id,
             )
             .first()
@@ -967,15 +822,8 @@ class Conversations:
         self._db.commit()
 
     def update_message_by_id(self, message_id, new_message):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             logging.info(f"No conversation found.")
             self._db.close()
             return
@@ -983,7 +831,7 @@ class Conversations:
         message = (
             self._db.query(Message)
             .filter(
-                Message.conversation_id == conversation.id,
+                Message.conversation_id == self.conversation.id,
                 Message.id == message_id,
             )
             .first()
@@ -1005,21 +853,10 @@ class Conversations:
             self._db.rollback()
 
     def get_conversation_id(self):
-        if not self.conversation_name:
-            conversation_name = "-"
-        else:
-            conversation_name = self.conversation_name
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
+
         if not conversation:
             conversation = Conversation(
-                name=conversation_name, user_id=self.user_data.id
+                name=self.conversation_name, user_id=self.user_data.id
             )
             self._db.add(conversation)
             self._db.commit()
@@ -1027,40 +864,24 @@ class Conversations:
         return conversation_id
 
     def rename_conversation(self, new_name: str):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
-            conversation = Conversation(
+        if not self.conversation:
+            self._conversation = Conversation(
                 name=self.conversation_name, user_id=self.user_data.id
             )
-            self._db.add(conversation)
+            self._db.add(self._conversation)
             self._db.commit()
-        conversation.name = new_name
+        else:
+            self.conversation.name = new_name
         self._db.commit()
         return new_name
 
     def get_last_activity_id(self):
-        if not self.conversation_name:
-            self.conversation_name = "-"
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             return None
         last_activity = (
             self._db.query(Message)
-            .filter(Message.conversation_id == conversation.id)
+            .filter(Message.conversation_id == self.conversation.id)
             .filter(Message.content.like("[ACTIVITY]%"))
             .order_by(Message.timestamp.desc())
             .first()
@@ -1071,15 +892,7 @@ class Conversations:
         return last_id
 
     def set_conversation_summary(self, summary: str):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+        if not self.conversation:
             return ""
         conversation = (
             self._db.query(Conversation)
@@ -1091,43 +904,21 @@ class Conversations:
         return summary
 
     def get_conversation_summary(self):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             return ""
-        summary = conversation.summary
+        summary = self.conversation.summary
         return summary
 
     def get_attachment_count(self):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             return 0
-        attachment_count = conversation.attachment_count
+        attachment_count = self.conversation.attachment_count
         return attachment_count
 
     def update_attachment_count(self, count: int):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+        if not self.conversation:
             return 0
         conversation = (
             self._db.query(Conversation)
@@ -1139,15 +930,8 @@ class Conversations:
         return count
 
     def increment_attachment_count(self):
-        conversation = (
-            self._db.query(Conversation)
-            .filter(
-                Conversation.name == self.conversation_name,
-                Conversation.user_id == self.user_data.id,
-            )
-            .first()
-        )
-        if not conversation:
+
+        if not self.conversation:
             return 0
         conversation = (
             self._db.query(Conversation)
