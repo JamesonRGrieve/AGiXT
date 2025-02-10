@@ -351,7 +351,7 @@ class Conversations:
             return None
 
         # Get the target message first to get its timestamp
-        target_message = self.get_message(message_id)
+        target_message = self.get_message_by_id(message_id)
 
         if not target_message:
             logging.info(f"Target message not found.")
@@ -698,7 +698,7 @@ class Conversations:
         if not self.conversation:
             logging.info(f"No conversation found.")
             return
-        message = self.get_message(message_id)
+        message = self.get_message_by_id(message_id)
 
         if not message:
             logging.info(
