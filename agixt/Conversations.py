@@ -64,11 +64,12 @@ def get_conversation_name_by_id(conversation_id, user_id):
 
 
 class Conversations:
-    def __init__(self, conversation_name=None, user=DEFAULT_USER):
+    def __init__(self, conversation_name="-", user=DEFAULT_USER):
         self.conversation_name = conversation_name
         self.user = user
         self._db: Optional[Session] = None
         self._user_data = None
+        self._conversation = None
 
     @property
     def user_data(self):
@@ -77,6 +78,19 @@ class Conversations:
                 self._db.query(User).filter(User.email == self.user).first()
             )
         return self._user_data
+
+    @property
+    def conversation(self):
+        if self._conversation is None:
+            self._conversation = (
+                self._db.query(Conversation)
+                .filter(
+                    Conversation.name == self.conversation_name,
+                    Conversation.user_id == self.user_data.id,
+                )
+                .first()
+            )
+        return self._conversation
 
     def get_session(self):
         if not self._session or not self._session.is_active:
