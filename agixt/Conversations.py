@@ -110,6 +110,16 @@ class Conversations:
     def __del__(self):
         self.close()
 
+    def get_message(self, message_id: str):
+        return (
+            self._db.query(Message)
+            .filter(
+                Message.conversation_id == self.conversation.id,
+                Message.id == message_id,
+            )
+            .first()
+        )
+
     def export_conversation(self):
         if not self.conversation_name:
             self.conversation_name = "-"
@@ -310,14 +320,7 @@ class Conversations:
             return None
 
         # Get the target message first to get its timestamp
-        target_message = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.id == message_id,
-            )
-            .first()
-        )
+        target_message = self.get_message(message_id)
 
         if not target_message:
             logging.info(f"Target message not found.")
@@ -658,14 +661,7 @@ class Conversations:
             )
             .first()
         ).id
-        message = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.id == message_id,
-            )
-            .first()
-        )
+        message = self.get_message(message_id)
 
         if not message:
             logging.info(
@@ -679,14 +675,7 @@ class Conversations:
         if not self.conversation:
             logging.info(f"No conversation found.")
             return
-        message = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.id == message_id,
-            )
-            .first()
-        )
+        message = self.get_message(message_id)
 
         if not message:
             logging.info(
@@ -718,14 +707,7 @@ class Conversations:
         if not self.conversation:
             logging.info(f"No conversation found.")
             return
-        message = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.id == message_id,
-            )
-            .first()
-        )
+        message = self.get_message(message_id)
 
         if not message:
             logging.info(
@@ -748,14 +730,7 @@ class Conversations:
             )
             .first()
         ).id
-        message = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.id == message_id,
-            )
-            .first()
-        )
+        message = self.get_message(message_id)
         if not message:
             logging.info(
                 f"No message found with ID '{message_id}' in conversation '{self.conversation_name}'."
@@ -778,14 +753,7 @@ class Conversations:
             )
             .first()
         ).id
-        message = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.id == message_id,
-            )
-            .first()
-        )
+        message = self.get_message(message_id)
         if not message:
             logging.info(
                 f"No message found with ID '{message_id}' in conversation '{self.conversation_name}'."
@@ -807,14 +775,7 @@ class Conversations:
             )
             .first()
         ).id
-        message = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.id == message_id,
-            )
-            .first()
-        )
+        message = self.get_message(message_id)
         if not message:
             logging.info(
                 f"No message found with ID '{message_id}' in conversation '{self.conversation_name}'."
@@ -830,14 +791,7 @@ class Conversations:
             self._db.close()
             return
 
-        message = (
-            self._db.query(Message)
-            .filter(
-                Message.conversation_id == self.conversation.id,
-                Message.id == message_id,
-            )
-            .first()
-        )
+        message = self.get_message(message_id)
 
         if not message:
             logging.info(
