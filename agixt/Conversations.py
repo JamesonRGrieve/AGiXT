@@ -5,12 +5,10 @@ from DB import (
     Agent,
     Message,
     User,
-    UserPreferences,
     get_session,
 )
 from Globals import getenv, DEFAULT_USER
 from sqlalchemy.sql import func
-import pytz
 from MagicalAuth import convert_time
 from sqlalchemy.orm import Session
 from typing import Optional
