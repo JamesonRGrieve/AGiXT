@@ -803,7 +803,7 @@ class Conversations:
             self._conversation = Conversation(
                 name=self.conversation_name, user_id=self.user_data.id
             )
-            self._db.add(self.conversation)
+            self._db.add(self._conversation)
             self._db.commit()
         conversation_id = str(self.conversation.id)
         return conversation_id
