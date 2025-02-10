@@ -801,12 +801,12 @@ class Conversations:
     def get_conversation_id(self):
 
         if not self.conversation:
-            conversation = Conversation(
+            self.conversation = Conversation(
                 name=self.conversation_name, user_id=self.user_data.id
             )
-            self._db.add(conversation)
+            self._db.add(self.conversation)
             self._db.commit()
-        conversation_id = str(conversation.id)
+        conversation_id = str(self.conversation.id)
         return conversation_id
 
     def rename_conversation(self, new_name: str):
