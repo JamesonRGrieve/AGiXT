@@ -102,10 +102,10 @@ class Conversations:
             self._session.close()
             self._session = None
 
-    def __enter__(self):
+    def __enter__(self) -> "Conversations":
         return self.get_session()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
 
     def export_conversation(self):

@@ -33,18 +33,18 @@ async def search_the_web(
     auth = MagicalAuth(token=token)
     user = auth.email
     ApiClient = AGiXTSDK(base_uri=getenv("AGIXT_API"), api_key=token)
-    c = Conversations(conversation_name=conversation_name, user=user)
-    conversaton_id = c.get_conversation_id()
-    websearch = Websearch(
-        agent=Agent(agent_name=agent_name, ApiClient=ApiClient, user=user),
-        user=user,
-        collection_number=conversaton_id,
-    )
-    text_content, link_list = await websearch.web_search(
-        query=query, conversation_id=conversaton_id
-    )
-    # return them together as markdown
-    return f"{text_content}\n\n{link_list}"
+    with Conversations(conversation_name=conversation_name, user=user) as c:
+        conversaton_id = c.get_conversation_id()
+        websearch = Websearch(
+            agent=Agent(agent_name=agent_name, ApiClient=ApiClient, user=user),
+            user=user,
+            collection_number=conversaton_id,
+        )
+        text_content, link_list = await websearch.web_search(
+            query=query, conversation_id=conversaton_id
+        )
+        # return them together as markdown
+        return f"{text_content}\n\n{link_list}"
 
 
 class Websearch:
@@ -278,13 +278,13 @@ class Websearch:
                         if len(link_list) > 25:
                             link_list = link_list[:25]
                         if conversation_name != "" and conversation_name is not None:
-                            c = Conversations(
+                            with Conversations(
                                 conversation_name=conversation_name, user=self.user
-                            )
-                            c.log_interaction(
-                                role=self.agent_name,
-                                message=f"[SUBACTIVITY][{activity_id}] Found {len(link_list)} links on [{url}]({url}) . Choosing one to browse next.",
-                            )
+                            ) as c:
+                                c.log_interaction(
+                                    role=self.agent_name,
+                                    message=f"[SUBACTIVITY][{activity_id}] Found {len(link_list)} links on [{url}]({url}) . Choosing one to browse next.",
+                                )
                         try:
                             pick_a_link = self.ApiClient.prompt_agent(
                                 agent_name=self.agent_name,
@@ -353,15 +353,15 @@ class Websearch:
         logging.info(
             f"Conversation ID: {conversation_id} Conversation Name: {conversation_name}"
         )
-        c = Conversations(conversation_name=conversation_name, user=self.user)
-        try:
-            words = links.split()
-            links = [
-                word for word in words if urlparse(word).scheme in ["http", "https"]
-            ]
-        except:
-            links = links
-        if links is not None:
+        with Conversations(conversation_name=conversation_name, user=self.user) as c:
+            try:
+                words = links.split()
+                links = [
+                    word for word in words if urlparse(word).scheme in ["http", "https"]
+                ]
+            except:
+                links = links
+            if links is not None:
             for link in links:
                 if "href" in link:
                     try:
@@ -401,37 +401,37 @@ class Websearch:
         links = re.findall(r"(?P<url>https?://[^\s]+)", user_input)
         if len(links) < 1:
             return ""
-        c = Conversations(conversation_name=conversation_name, user=self.user)
-        activity_id = c.get_thinking_id(agent_name=self.agent_name)
-        c.log_interaction(
-            role=self.agent_name,
-            message=f"[SUBACTIVITY][{activity_id}] Browsing links provided by the user.",
-        )
-        tasks = []
-        scraped_links = []
-        if links is not None and len(links) > 0:
-            for link in links:
-                if self.verify_link(link=link):
-                    c.log_interaction(
-                        role=self.agent_name,
-                        message=f"[SUBACTIVITY][{activity_id}] Browsing [{link}]({link}).",
-                    )
-                    task = asyncio.create_task(
-                        self.get_web_content(
-                            url=link, summarize_content=summarize_content
-                        )
-                    )
-                    tasks.append(task)
-                    scraped_links.append(link)
-        await asyncio.gather(*tasks)
-        str_links = "\n".join(scraped_links)
-        message = f"I have read all of the content from the following links into my memory:\n{str_links}"
-        if conversation_name != "" and conversation_name is not None:
+        with Conversations(conversation_name=conversation_name, user=self.user) as c:
+            activity_id = c.get_thinking_id(agent_name=self.agent_name)
             c.log_interaction(
                 role=self.agent_name,
-                message=f"[SUBACTIVITY][{activity_id}] {message}",
+                message=f"[SUBACTIVITY][{activity_id}] Browsing links provided by the user.",
             )
-        return message
+            tasks = []
+            scraped_links = []
+            if links is not None and len(links) > 0:
+                for link in links:
+                    if self.verify_link(link=link):
+                        c.log_interaction(
+                            role=self.agent_name,
+                            message=f"[SUBACTIVITY][{activity_id}] Browsing [{link}]({link}).",
+                        )
+                        task = asyncio.create_task(
+                            self.get_web_content(
+                                url=link, summarize_content=summarize_content
+                            )
+                        )
+                        tasks.append(task)
+                        scraped_links.append(link)
+            await asyncio.gather(*tasks)
+            str_links = "\n".join(scraped_links)
+            message = f"I have read all of the content from the following links into my memory:\n{str_links}"
+            if conversation_name != "" and conversation_name is not None:
+                c.log_interaction(
+                    role=self.agent_name,
+                    message=f"[SUBACTIVITY][{activity_id}] {message}",
+                )
+            return message
 
     async def ddg_search(self, query: str, proxy=None) -> List[str]:
         async with async_playwright() as p:
@@ -564,78 +564,78 @@ class Websearch:
             websearch_timeout = 0
         if websearch_depth > 0:
             if len(user_input) > 0:
-                c = Conversations(conversation_name=conversation_name, user=self.user)
-                conversation_id = c.get_conversation_id()
-                logging.info(
-                    f"Websearch Agent: Conversation ID: {conversation_id} Conversation Name: {conversation_name}"
-                )
-                new_activity_id = c.log_interaction(
-                    role=self.agent_name,
-                    message=f"[SUBACTIVITY][{activity_id}] Searching for `{search_string}`.",
-                )
-                google_api_key = (
-                    self.agent_settings["GOOGLE_API_KEY"]
-                    if "GOOGLE_API_KEY" in self.agent_settings
-                    else ""
-                )
-                google_search_engine_id = (
-                    self.agent_settings["GOOGLE_SEARCH_ENGINE_ID"]
-                    if "GOOGLE_SEARCH_ENGINE_ID" in self.agent_settings
-                    else ""
-                )
-                links = []
-                logging.info(f"Gooogle API Key: {google_api_key}")
-                logging.info(f"Google Search Engine ID: {google_search_engine_id}")
-                if google_api_key != "" and google_search_engine_id != "":
-                    links = await self.google_search(
-                        query=search_string,
-                        google_api_key=google_api_key,
-                        google_search_engine_id=google_search_engine_id,
-                    )
+                with Conversations(conversation_name=conversation_name, user=self.user) as c:
+                    conversation_id = c.get_conversation_id()
                     logging.info(
-                        f"Found {len(links)} results for {search_string} using Google."
+                        f"Websearch Agent: Conversation ID: {conversation_id} Conversation Name: {conversation_name}"
                     )
-                if links == [] or links is None:
-                    search_proxy = getenv("SEARCH_PROXY")
-                    if search_proxy != "":
-                        links = await self.ddg_search(
-                            query=search_string, proxy=search_proxy
-                        )
-                    else:
-                        links = await self.ddg_search(query=search_string)
-                    logging.info(
-                        f"Found {len(links)} results for {search_string} using DDG."
+                    new_activity_id = c.log_interaction(
+                        role=self.agent_name,
+                        message=f"[SUBACTIVITY][{activity_id}] Searching for `{search_string}`.",
                     )
-                if links == [] or links is None:
-                    logging.info(
-                        f"DDG Search Failed. Trying different search providers."
+                    google_api_key = (
+                        self.agent_settings["GOOGLE_API_KEY"]
+                        if "GOOGLE_API_KEY" in self.agent_settings
+                        else ""
+                    )
+                    google_search_engine_id = (
+                        self.agent_settings["GOOGLE_SEARCH_ENGINE_ID"]
+                        if "GOOGLE_SEARCH_ENGINE_ID" in self.agent_settings
+                        else ""
                     )
                     links = []
-                    content, links = await self.web_search(
-                        query=search_string, conversation_id=conversation_id
-                    )
-
-                if len(links) > websearch_depth:
-                    links = links[:websearch_depth]
-                if links is not None and len(links) > 0:
-                    task = asyncio.create_task(
-                        self.recursive_browsing(
-                            user_input=user_input,
-                            links=links,
-                            conversation_name=conversation_name,
-                            conversation_id=conversation_id,
-                            activity_id=new_activity_id,
-                            agent_browsing=False,
+                    logging.info(f"Gooogle API Key: {google_api_key}")
+                    logging.info(f"Google Search Engine ID: {google_search_engine_id}")
+                    if google_api_key != "" and google_search_engine_id != "":
+                        links = await self.google_search(
+                            query=search_string,
+                            google_api_key=google_api_key,
+                            google_search_engine_id=google_search_engine_id,
                         )
-                    )
-                    self.tasks.append(task)
-                if int(websearch_timeout) == 0:
-                    await asyncio.gather(*self.tasks)
-                else:
-                    logging.info(
-                        f"Web searching for {websearch_timeout} seconds... Please wait..."
-                    )
-                    await asyncio.sleep(int(websearch_timeout))
-                    logging.info("Websearch tasks completed.")
+                        logging.info(
+                            f"Found {len(links)} results for {search_string} using Google."
+                        )
+                    if links == [] or links is None:
+                        search_proxy = getenv("SEARCH_PROXY")
+                        if search_proxy != "":
+                            links = await self.ddg_search(
+                                query=search_string, proxy=search_proxy
+                            )
+                        else:
+                            links = await self.ddg_search(query=search_string)
+                        logging.info(
+                            f"Found {len(links)} results for {search_string} using DDG."
+                        )
+                    if links == [] or links is None:
+                        logging.info(
+                            f"DDG Search Failed. Trying different search providers."
+                        )
+                        links = []
+                        content, links = await self.web_search(
+                            query=search_string, conversation_id=conversation_id
+                        )
+
+                    if len(links) > websearch_depth:
+                        links = links[:websearch_depth]
+                    if links is not None and len(links) > 0:
+                        task = asyncio.create_task(
+                            self.recursive_browsing(
+                                user_input=user_input,
+                                links=links,
+                                conversation_name=conversation_name,
+                                conversation_id=conversation_id,
+                                activity_id=new_activity_id,
+                                agent_browsing=False,
+                            )
+                        )
+                        self.tasks.append(task)
+                    if int(websearch_timeout) == 0:
+                        await asyncio.gather(*self.tasks)
+                    else:
+                        logging.info(
+                            f"Web searching for {websearch_timeout} seconds... Please wait..."
+                        )
+                        await asyncio.sleep(int(websearch_timeout))
+                        logging.info("Websearch tasks completed.")
             else:
                 logging.info("No results found.")
