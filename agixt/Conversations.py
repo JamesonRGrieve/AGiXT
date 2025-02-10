@@ -1,26 +1,17 @@
-from datetime import datetime
 import logging
-from DB import (
-    Conversation,
-    Agent,
-    Message,
-    User,
-    get_session,
-)
-from Globals import getenv, DEFAULT_USER
-from sqlalchemy.sql import func
+from datetime import datetime
+from typing import Optional
+
+from DB import Agent, Conversation, Message, User, get_session
+from Globals import DEFAULT_USER, getenv
 from MagicalAuth import convert_time
 from sqlalchemy.orm import Session
-from typing import Optional
+from sqlalchemy.sql import func
 
 logging.basicConfig(
     level=getenv("LOG_LEVEL"),
     format=getenv("LOG_FORMAT"),
 )
-
-
-from typing import Optional
-from sqlalchemy.orm import Session
 
 
 class Conversations:
