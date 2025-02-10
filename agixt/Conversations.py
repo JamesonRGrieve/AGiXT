@@ -61,19 +61,40 @@ def get_conversation_name_by_id(conversation_id, user_id):
     return conversation_name
 
 
-class Conversations:
+from typing import Optional
+from sqlalchemy.orm import Session
 
-    def __init__(self, conversation_name="-", user=DEFAULT_USER):
+
+class Conversations:
+    def __init__(self, conversation_name: str = "-", user: str = DEFAULT_USER):
         self.conversation_name = conversation_name
         self.user = user
-        self._db: Optional[Session] = self.get_session()
+        # Initialize _db explicitly first
+        self._db: Optional[Session] = None
         self._user_data = None
         self._conversation = None
+        # Now get the session after _db is properly initialized
+        self._db = get_session()
 
-    def get_session(self):
-        if not self._db or not self._db.is_active:
+    def get_session(self) -> Session:
+        if self._db is None or not self._db.is_active:
             self._db = get_session()
         return self._db
+
+    def close(self) -> None:
+        # Add hasattr check for safety
+        if hasattr(self, "_db") and self._db is not None:
+            self._db.close()
+            self._db = None
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self) -> "Conversations":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
 
     @property
     def user_data(self):
@@ -95,21 +116,6 @@ class Conversations:
                 .first()
             )
         return self._conversation
-
-    def close(self):
-        if self._db:
-            self._db.close()
-            self._db = None
-
-    def __enter__(self) -> "Conversations":
-        self._db = self.get_session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        self.close()
-
-    def __del__(self):
-        self.close()
 
     def get_message_by_content(self, message_content: str):
         return (
