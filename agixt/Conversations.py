@@ -777,7 +777,7 @@ class Conversations:
         message = self.get_message_by_content(message)
         if not message:
             logging.info(
-                f"No message found with ID '{message_id}' in conversation '{self.conversation_name}'."
+                f"No message found with ID '{message.id}' in conversation '{self.conversation_name}'."
             )
             return
         message.content = new_message

@@ -113,7 +113,7 @@ async def get_conversation_history(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(history.conversation_name)
-        history.conversation_name = get_conversation_name_by_id(
+        history.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
@@ -148,7 +148,7 @@ async def get_conversation_data(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(conversation_name)
-        conversation_name = get_conversation_name_by_id(
+        conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
@@ -195,7 +195,7 @@ async def delete_conversation_history(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(history.conversation_name)
-        history.conversation_name = get_conversation_name_by_id(
+        history.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
@@ -239,7 +239,7 @@ async def update_history_message(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(history.conversation_name)
-        history.conversation_name = get_conversation_name_by_id(
+        history.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
@@ -309,7 +309,7 @@ async def log_interaction(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(log_interaction.conversation_name)
-        log_interaction.conversation_name = get_conversation_name_by_id(
+        log_interaction.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
@@ -341,7 +341,7 @@ async def rename_conversation(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(rename.conversation_name)
-        rename.conversation_name = get_conversation_name_by_id(
+        rename.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
@@ -427,7 +427,7 @@ async def fork_conversation(
     try:
         conversation_id = uuid.UUID(conversation_name)
         user_id = get_user_id(user)
-        conversation_name = get_conversation_name_by_id(
+        conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=user_id
         )
     except:
@@ -453,7 +453,7 @@ async def forkconversation(
     user_id = get_user_id(user)
     try:
         conversation_id = uuid.UUID(conversation_id)
-        conversation_name = get_conversation_name_by_id(
+        conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=user_id
         )
     except:
@@ -480,7 +480,7 @@ async def get_tts(
     authorization: str = Header(None),
 ):
     auth = MagicalAuth(token=authorization)
-    conversation_name = get_conversation_name_by_id(
+    conversation_name = Conversations.get_conversation_name_by_id(
         conversation_id=conversation_id, user_id=auth.user_id
     )
     with Conversations(conversation_name=conversation_name, user=user) as c:
