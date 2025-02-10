@@ -1,6 +1,5 @@
 from Interactions import Interactions
 from ApiClient import get_api_client, Conversations, Prompts, Chain
-from Conversations import get_conversation_name_by_id, get_conversation_id_by_name
 from Memories import Memories
 from Extensions import Extensions
 from pydub import AudioSegment

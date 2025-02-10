@@ -1,33 +1,31 @@
-from fastapi import APIRouter, Depends, Header
-from typing import Dict
-from ApiClient import verify_api_key, get_api_client, Agent
-from Conversations import (
-    Conversations,
-    get_conversation_name_by_id,
-    get_conversation_id_by_name,
-)
-from XT import AGiXT
-from Models import (
-    HistoryModel,
-    ConversationHistoryModel,
-    ConversationHistoryMessageModel,
-    UpdateConversationHistoryMessageModel,
-    ResponseMessage,
-    LogInteraction,
-    RenameConversationModel,
-    UpdateMessageModel,
-    DeleteMessageModel,
-    ConversationFork,
-    ConversationListResponse,
-    ConversationDetailResponse,
-    ConversationHistoryResponse,
-    NotificationResponse,
-    MessageIdResponse,
-)
 import json
 import uuid
 from datetime import datetime
+from typing import Dict
+
+from ApiClient import Agent, get_api_client, verify_api_key
+from Conversations import Conversations
+from fastapi import APIRouter, Depends, Header
 from MagicalAuth import MagicalAuth, get_user_id
+from XT import AGiXT
+
+from Models import (
+    ConversationDetailResponse,
+    ConversationFork,
+    ConversationHistoryMessageModel,
+    ConversationHistoryModel,
+    ConversationHistoryResponse,
+    ConversationListResponse,
+    DeleteMessageModel,
+    HistoryModel,
+    LogInteraction,
+    MessageIdResponse,
+    NotificationResponse,
+    RenameConversationModel,
+    ResponseMessage,
+    UpdateConversationHistoryMessageModel,
+    UpdateMessageModel,
+)
 
 app = APIRouter()
 
@@ -41,15 +39,15 @@ app = APIRouter()
     dependencies=[Depends(verify_api_key)],
 )
 async def get_conversations_list(user=Depends(verify_api_key)):
-    c = Conversations(user=user)
-    conversations = c.get_conversations()
-    if conversations is None:
-        conversations = []
-    conversations_with_ids = c.get_conversations_with_ids()
-    return {
-        "conversations": conversations,
-        "conversations_with_ids": conversations_with_ids,
-    }
+    with Conversations(user=user) as c:
+        conversations = c.get_conversations()
+        if conversations is None:
+            conversations = []
+        conversations_with_ids = c.get_conversations_with_ids()
+        return {
+            "conversations": conversations,
+            "conversations_with_ids": conversations_with_ids,
+        }
 
 
 @app.get(
@@ -61,14 +59,14 @@ async def get_conversations_list(user=Depends(verify_api_key)):
     dependencies=[Depends(verify_api_key)],
 )
 async def get_conversations(user=Depends(verify_api_key)):
-    c = Conversations(user=user)
-    conversations = c.get_conversations_with_detail()
-    if not conversations:
-        conversations = {}
-    # Output: {"conversations": { "conversation_id": { "name": "conversation_name", "created_at": "datetime", "updated_at": "datetime" } } }
-    return {
-        "conversations": conversations,
-    }
+    with Conversations(user=user) as c:
+        conversations = c.get_conversations_with_detail()
+        if not conversations:
+            conversations = {}
+        # Output: {"conversations": { "conversation_id": { "name": "conversation_name", "created_at": "datetime", "updated_at": "datetime" } } }
+        return {
+            "conversations": conversations,
+        }
 
 
 @app.get(
@@ -86,20 +84,19 @@ async def get_conversation_history(
 ):
     auth = MagicalAuth(token=authorization)
     if conversation_id == "-":
-        conversation_id = get_conversation_id_by_name(
+        conversation_id = Conversations.get_conversation_id_by_name(
             conversation_name="-", user_id=auth.user_id
         )
-    conversation_name = get_conversation_name_by_id(
+    conversation_name = Conversations.get_conversation_name_by_id(
         conversation_id=conversation_id, user_id=auth.user_id
     )
-    conversation_history = Conversations(
-        conversation_name=conversation_name, user=user
-    ).get_conversation()
-    if conversation_history is None:
-        conversation_history = []
-    if "interactions" in conversation_history:
-        conversation_history = conversation_history["interactions"]
-    return {"conversation_history": conversation_history}
+    with Conversations(conversation_name=conversation_name, user=user) as c:
+        conversation_history = c.get_conversation()
+        if conversation_history is None:
+            conversation_history = []
+        if "interactions" in conversation_history:
+            conversation_history = conversation_history["interactions"]
+        return {"conversation_history": conversation_history}
 
 
 @app.get(
@@ -118,22 +115,21 @@ async def get_conversation_history(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(history.conversation_name)
-        history.conversation_name = get_conversation_name_by_id(
+        history.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
         conversation_id = None
-    conversation_history = Conversations(
-        conversation_name=history.conversation_name, user=user
-    ).get_conversation(
-        limit=history.limit,
-        page=history.page,
-    )
-    if conversation_history is None:
-        conversation_history = []
-    if "interactions" in conversation_history:
-        conversation_history = conversation_history["interactions"]
-    return {"conversation_history": conversation_history}
+    with Conversations(conversation_name=history.conversation_name, user=user) as c:
+        conversation_history = c.get_conversation(
+            limit=history.limit,
+            page=history.page,
+        )
+        if conversation_history is None:
+            conversation_history = []
+        if "interactions" in conversation_history:
+            conversation_history = conversation_history["interactions"]
+        return {"conversation_history": conversation_history}
 
 
 @app.get(
@@ -154,19 +150,18 @@ async def get_conversation_data(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(conversation_name)
-        conversation_name = get_conversation_name_by_id(
+        conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
         conversation_id = None
-    conversation_history = Conversations(
-        conversation_name=conversation_name, user=user
-    ).get_conversation(limit=limit, page=page)
-    if conversation_history is None:
-        conversation_history = []
-    if "interactions" in conversation_history:
-        conversation_history = conversation_history["interactions"]
-    return {"conversation_history": conversation_history}
+    with Conversations(conversation_name=conversation_name, user=user) as c:
+        conversation_history = c.get_conversation(limit=limit, page=page)
+        if conversation_history is None:
+            conversation_history = []
+        if "interactions" in conversation_history:
+            conversation_history = conversation_history["interactions"]
+        return {"conversation_history": conversation_history}
 
 
 @app.post(
@@ -181,9 +176,8 @@ async def new_conversation_history(
     history: ConversationHistoryModel,
     user=Depends(verify_api_key),
 ):
-    Conversations(
-        conversation_name=history.conversation_name, user=user
-    ).new_conversation(conversation_content=history.conversation_content)
+    with Conversations(conversation_name=history.conversation_name, user=user) as c:
+        c.new_conversation(conversation_content=history.conversation_content)
     return {"conversation_history": history.conversation_content}
 
 
@@ -203,14 +197,13 @@ async def delete_conversation_history(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(history.conversation_name)
-        history.conversation_name = get_conversation_name_by_id(
+        history.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
         conversation_id = None
-    Conversations(
-        conversation_name=history.conversation_name, user=user
-    ).delete_conversation()
+    with Conversations(conversation_name=history.conversation_name, user=user) as c:
+        c.delete_conversation()
     return ResponseMessage(
         message=f"Conversation `{history.conversation_name}` for agent {history.agent_name} deleted."
     )
@@ -227,9 +220,8 @@ async def delete_conversation_history(
 async def delete_history_message(
     history: ConversationHistoryMessageModel, user=Depends(verify_api_key)
 ) -> ResponseMessage:
-    Conversations(
-        conversation_name=history.conversation_name, user=user
-    ).delete_message(message=history.message)
+    with Conversations(conversation_name=history.conversation_name, user=user) as c:
+        c.delete_message(message=history.message)
     return ResponseMessage(message=f"Message deleted.")
 
 
@@ -249,17 +241,16 @@ async def update_history_message(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(history.conversation_name)
-        history.conversation_name = get_conversation_name_by_id(
+        history.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
         conversation_id = None
-    Conversations(
-        conversation_name=history.conversation_name, user=user
-    ).update_message(
-        message=history.message,
-        new_message=history.new_message,
-    )
+    with Conversations(conversation_name=history.conversation_name, user=user) as c:
+        c.update_message(
+            message=history.message,
+            new_message=history.new_message,
+        )
     return ResponseMessage(message=f"Message updated.")
 
 
@@ -276,12 +267,11 @@ async def update_by_id(
     history: UpdateMessageModel,
     user=Depends(verify_api_key),
 ) -> ResponseMessage:
-    Conversations(
-        conversation_name=history.conversation_name, user=user
-    ).update_message_by_id(
-        message_id=message_id,
-        new_message=history.new_message,
-    )
+    with Conversations(conversation_name=history.conversation_name, user=user) as c:
+        c.update_message_by_id(
+            message_id=message_id,
+            new_message=history.new_message,
+        )
     return ResponseMessage(message=f"Message updated.")
 
 
@@ -298,11 +288,10 @@ async def delete_by_id(
     history: DeleteMessageModel,
     user=Depends(verify_api_key),
 ):
-    Conversations(
-        conversation_name=history.conversation_name, user=user
-    ).delete_message_by_id(
-        message_id=message_id,
-    )
+    with Conversations(conversation_name=history.conversation_name, user=user) as c:
+        c.delete_message_by_id(
+            message_id=message_id,
+        )
     return ResponseMessage(message=f"Message deleted.")
 
 
@@ -322,17 +311,18 @@ async def log_interaction(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(log_interaction.conversation_name)
-        log_interaction.conversation_name = get_conversation_name_by_id(
+        log_interaction.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
         conversation_id = None
-    interaction_id = Conversations(
+    with Conversations(
         conversation_name=log_interaction.conversation_name, user=user
-    ).log_interaction(
-        message=log_interaction.message,
-        role=log_interaction.role,
-    )
+    ) as c:
+        interaction_id = c.log_interaction(
+            message=log_interaction.message,
+            role=log_interaction.role,
+        )
     return ResponseMessage(message=str(interaction_id))
 
 
@@ -353,7 +343,7 @@ async def rename_conversation(
     auth = MagicalAuth(token=authorization)
     try:
         conversation_id = uuid.UUID(rename.conversation_name)
-        rename.conversation_name = get_conversation_name_by_id(
+        rename.conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=auth.user_id
         )
     except:
@@ -416,11 +406,11 @@ async def rename_conversation(
             "#", ""
         )
     c.rename_conversation(new_name=rename.new_conversation_name)
-    c = Conversations(conversation_name=rename.new_conversation_name, user=user)
-    c.log_interaction(
-        message=f"[ACTIVITY][INFO] Conversation renamed to `{rename.new_conversation_name}`.",
-        role=rename.agent_name,
-    )
+    with Conversations(conversation_name=rename.new_conversation_name, user=user) as c:
+        c.log_interaction(
+            message=f"[ACTIVITY][INFO] Conversation renamed to `{rename.new_conversation_name}`.",
+            role=rename.agent_name,
+        )
     return {"conversation_name": rename.new_conversation_name}
 
 
@@ -439,15 +429,16 @@ async def fork_conversation(
     try:
         conversation_id = uuid.UUID(conversation_name)
         user_id = get_user_id(user)
-        conversation_name = get_conversation_name_by_id(
+        conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=user_id
         )
     except:
         conversation_id = None
-    new_conversation_name = Conversations(
-        conversation_name=conversation_name, user=user
-    ).fork_conversation(message_id=fork.message_id)
-    return ResponseMessage(message=f"Forked conversation to {new_conversation_name}")
+    with Conversations(conversation_name=conversation_name, user=user) as c:
+        new_conversation_name = c.fork_conversation(message_id=fork.message_id)
+        return ResponseMessage(
+            message=f"Forked conversation to {new_conversation_name}"
+        )
 
 
 @app.post(
@@ -464,15 +455,16 @@ async def forkconversation(
     user_id = get_user_id(user)
     try:
         conversation_id = uuid.UUID(conversation_id)
-        conversation_name = get_conversation_name_by_id(
+        conversation_name = Conversations.get_conversation_name_by_id(
             conversation_id=str(conversation_id), user_id=user_id
         )
     except:
         conversation_id = None
-    new_conversation_name = Conversations(
-        conversation_name=conversation_name, user=user
-    ).fork_conversation(message_id=str(message_id))
-    return ResponseMessage(message=f"Forked conversation to {new_conversation_name}")
+    with Conversations(conversation_name=conversation_name, user=user) as c:
+        new_conversation_name = c.fork_conversation(message_id=str(message_id))
+        return ResponseMessage(
+            message=f"Forked conversation to {new_conversation_name}"
+        )
 
 
 @app.get(
@@ -490,20 +482,18 @@ async def get_tts(
     authorization: str = Header(None),
 ):
     auth = MagicalAuth(token=authorization)
-    conversation_name = get_conversation_name_by_id(
+    conversation_name = Conversations.get_conversation_name_by_id(
         conversation_id=conversation_id, user_id=auth.user_id
     )
-    c = Conversations(conversation_name=conversation_name, user=user)
-    message = c.get_message_by_id(message_id=message_id)
-    agent_name = c.get_last_agent_name()
-    ApiClient = get_api_client(authorization=authorization)
-    agent = Agent(agent_name=agent_name, user=user, ApiClient=ApiClient)
-    tts_url = await agent.text_to_speech(text=message)
-    new_message = (
-        f'{message}\n<audio controls><source src="{tts_url}" type="audio/wav"></audio>'
-    )
-    c.update_message_by_id(message_id=message_id, new_message=new_message)
-    return {"message": new_message}
+    with Conversations(conversation_name=conversation_name, user=user) as c:
+        message = c.get_message_by_id_old(message_id=message_id)
+        agent_name = c.get_last_agent_name()
+        ApiClient = get_api_client(authorization=authorization)
+        agent = Agent(agent_name=agent_name, user=user, ApiClient=ApiClient)
+        tts_url = await agent.text_to_speech(text=message)
+        new_message = f'{message}\n<audio controls><source src="{tts_url}" type="audio/wav"></audio>'
+        c.update_message_by_id(message_id=message_id, new_message=new_message)
+        return {"message": new_message}
 
 
 @app.get(
@@ -515,6 +505,6 @@ async def get_tts(
     dependencies=[Depends(verify_api_key)],
 )
 async def get_notifications(user=Depends(verify_api_key)):
-    c = Conversations(user=user)
-    notifications = c.get_notifications()
-    return {"notifications": notifications}
+    with Conversations(user=user) as c:
+        notifications = c.get_notifications()
+        return {"notifications": notifications}

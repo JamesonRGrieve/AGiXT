@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Header
 from Globals import get_tokens
 from MagicalAuth import get_user_id
 from ApiClient import Agent, verify_api_key, get_api_client
-from Conversations import get_conversation_name_by_id
+from Conversations import Conversations
 from providers.default import DefaultProvider
 from Memories import embed
 from fastapi import UploadFile, File, Form
@@ -52,7 +52,7 @@ async def chat_completion(
             conversation_id = None
         if conversation_id:
             user_id = get_user_id(user)
-            conversation_name = get_conversation_name_by_id(
+            conversation_name = Conversations.get_conversation_name_by_id(
                 conversation_id=conversation_id, user_id=user_id
             )
     agixt = AGiXT(

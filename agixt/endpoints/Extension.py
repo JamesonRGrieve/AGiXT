@@ -83,26 +83,28 @@ async def run_command(
     ApiClient = get_api_client(authorization=authorization)
     agent = Agent(agent_name=agent_name, user=user, ApiClient=ApiClient)
     agent_config = agent.get_agent_config()
-    c = Conversations(conversation_name=command.conversation_name)
-    command_output = await Extensions(
-        agent_name=agent_name,
-        agent_config=agent_config,
-        agent_id=agent.agent_id,
-        conversation_name=command.conversation_name,
-        conversation_id=c.get_conversation_id(),
-        ApiClient=ApiClient,
-        api_key=authorization,
-        user=user,
-    ).execute_command(
-        command_name=command.command_name, command_args=command.command_args
-    )
-    if (
-        command.conversation_name != ""
-        and command.conversation_name != None
-        and command_output != None
-    ):
-        c = Conversations(conversation_name=command.conversation_name, user=user)
-        c.log_interaction(role=agent_name, message=command_output)
-    return {
-        "response": command_output,
-    }
+    with Conversations(conversation_name=command.conversation_name) as c:
+        command_output = await Extensions(
+            agent_name=agent_name,
+            agent_config=agent_config,
+            agent_id=agent.agent_id,
+            conversation_name=command.conversation_name,
+            conversation_id=c.get_conversation_id(),
+            ApiClient=ApiClient,
+            api_key=authorization,
+            user=user,
+        ).execute_command(
+            command_name=command.command_name, command_args=command.command_args
+        )
+        if (
+            command.conversation_name != ""
+            and command.conversation_name != None
+            and command_output != None
+        ):
+            with Conversations(
+                conversation_name=command.conversation_name, user=user
+            ) as c:
+                c.log_interaction(role=agent_name, message=command_output)
+        return {
+            "response": command_output,
+        }
