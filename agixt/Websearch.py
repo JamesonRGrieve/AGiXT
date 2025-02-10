@@ -362,33 +362,33 @@ class Websearch:
             except:
                 links = links
             if links is not None:
-            for link in links:
-                if "href" in link:
-                    try:
-                        url = link["href"]
-                    except:
+                for link in links:
+                    if "href" in link:
+                        try:
+                            url = link["href"]
+                        except:
+                            url = link
+                    else:
                         url = link
-                else:
-                    url = link
-                logging.info(f"URL: {url}")
-                url = re.sub(r"^.*?(http)", r"http", url)
-                if self.verify_link(link=url):
-                    if conversation_name != "" and conversation_name is not None:
-                        c.log_interaction(
-                            role=self.agent_name,
-                            message=f"[SUBACTIVITY][{activity_id}] Browsing [{url}]({url}).",
+                    logging.info(f"URL: {url}")
+                    url = re.sub(r"^.*?(http)", r"http", url)
+                    if self.verify_link(link=url):
+                        if conversation_name != "" and conversation_name is not None:
+                            c.log_interaction(
+                                role=self.agent_name,
+                                message=f"[SUBACTIVITY][{activity_id}] Browsing [{url}]({url}).",
+                            )
+                        task = asyncio.create_task(
+                            self.get_web_content(
+                                url=url,
+                                conversation_id=conversation_id,
+                                agent_browsing=agent_browsing,
+                                user_input=user_input,
+                                conversation_name=conversation_name,
+                                activity_id=activity_id,
+                            )
                         )
-                    task = asyncio.create_task(
-                        self.get_web_content(
-                            url=url,
-                            conversation_id=conversation_id,
-                            agent_browsing=agent_browsing,
-                            user_input=user_input,
-                            conversation_name=conversation_name,
-                            activity_id=activity_id,
-                        )
-                    )
-                    self.tasks.append(task)
+                        self.tasks.append(task)
 
     async def scrape_websites(
         self,
@@ -564,7 +564,9 @@ class Websearch:
             websearch_timeout = 0
         if websearch_depth > 0:
             if len(user_input) > 0:
-                with Conversations(conversation_name=conversation_name, user=self.user) as c:
+                with Conversations(
+                    conversation_name=conversation_name, user=self.user
+                ) as c:
                     conversation_id = c.get_conversation_id()
                     logging.info(
                         f"Websearch Agent: Conversation ID: {conversation_id} Conversation Name: {conversation_name}"
