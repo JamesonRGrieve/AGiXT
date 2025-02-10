@@ -854,7 +854,7 @@ class Conversations:
 
     def get_conversation_id(self):
 
-        if not conversation:
+        if not self.conversation:
             conversation = Conversation(
                 name=self.conversation_name, user_id=self.user_data.id
             )
