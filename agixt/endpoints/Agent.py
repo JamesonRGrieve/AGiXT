@@ -40,7 +40,7 @@ import base64
 import uuid
 import os
 from providers.default import DefaultProvider
-from Conversations import get_conversation_name_by_id, get_conversation_id_by_name
+from Conversations import Conversations
 from MagicalAuth import MagicalAuth
 
 app = APIRouter()
@@ -396,7 +396,7 @@ async def prompt_agent(
             conversation_id = None
         if conversation_id:
             auth = MagicalAuth(token=authorization)
-            conversation_name = get_conversation_name_by_id(
+            conversation_name = Conversations.get_conversation_name_by_id(
                 conversation_id=conversation_id, user_id=auth.user_id
             )
     agent = AGiXT(
@@ -653,7 +653,7 @@ async def think(
     authorization: str = Header(None),
 ):
     if "conversation_name" in agent_prompt.prompt_args:
-        agent_prompt.conversation_id = get_conversation_id_by_name(
+        agent_prompt.conversation_id = Conversations.get_conversation_id_by_name(
             conversation_name=agent_prompt.prompt_args["conversation_name"]
         )
     if "log_user_input" not in agent_prompt.prompt_args:

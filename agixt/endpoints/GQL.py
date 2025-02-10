@@ -1447,58 +1447,12 @@ class Subscription:
                 )
 
                 # Get conversations
-                c = Conversations(user=user)
-                result = c.get_conversations_with_detail()
+                with Conversations(user=user) as c:
+                    result = c.get_conversations_with_detail()
 
-                conversations = [
-                    ConversationMetadata(
-                        id=id,
-                        name=details["name"],
-                        agent_id=details["agent_id"],
-                        created_at=details["created_at"],
-                        updated_at=details["updated_at"],
-                        has_notifications=details["has_notifications"],
-                        summary=details["summary"],
-                        attachment_count=details["attachment_count"],
-                    )
-                    for id, details in result.items()
-                ]
-                conversations.sort(key=lambda x: x.updated_at, reverse=True)
-
-                # Handle pagination
-                page = pagination.page if pagination else 1
-                limit = pagination.limit if pagination else 100
-                total_items = len(conversations)
-                total_pages = -(-total_items // limit)  # Ceiling division
-                start_idx = (page - 1) * limit
-                end_idx = start_idx + limit
-
-                page_info = PageInfo(
-                    has_next_page=end_idx < total_items,
-                    has_previous_page=page > 1,
-                    total_pages=total_pages,
-                    total_items=total_items,
-                    current_page=page,
-                    items_per_page=limit,
-                )
-
-                conversation_connection = ConversationConnection(
-                    page_info=page_info, edges=conversations[start_idx:end_idx]
-                )
-
-                # Get current conversation if ID provided
-                current_conversation = None
-                if conversation_id:
-                    conversation_name = get_conversation_name_by_id(
-                        conversation_id=conversation_id, user_id=auth_manager.user_id
-                    )
-                    c = Conversations(user=user, conversation_name=conversation_name)
-                    conv_result = {"conversations": c.get_conversations_with_detail()}
-
-                    if conversation_id in conv_result["conversations"]:
-                        details = conv_result["conversations"][conversation_id]
-                        metadata = ConversationMetadata(
-                            id=conversation_id,
+                    conversations = [
+                        ConversationMetadata(
+                            id=id,
                             name=details["name"],
                             agent_id=details["agent_id"],
                             created_at=details["created_at"],
@@ -1507,46 +1461,99 @@ class Subscription:
                             summary=details["summary"],
                             attachment_count=details["attachment_count"],
                         )
+                        for id, details in result.items()
+                    ]
+                    conversations.sort(key=lambda x: x.updated_at, reverse=True)
 
-                        c = Conversations(user=user, conversation_name=metadata.name)
-                        history_result = c.get_conversation()
+                    # Handle pagination
+                    page = pagination.page if pagination else 1
+                    limit = pagination.limit if pagination else 100
+                    total_items = len(conversations)
+                    total_pages = -(-total_items // limit)  # Ceiling division
+                    start_idx = (page - 1) * limit
+                    end_idx = start_idx + limit
 
-                        messages = [
-                            ConversationMessage(
-                                id=msg["id"],
-                                role=msg["role"],
-                                message=msg["message"],
-                                timestamp=msg["timestamp"],
-                                updated_at=msg["updated_at"],
-                                updated_by=msg["updated_by"],
-                                feedback_received=msg["feedback_received"],
-                            )
-                            for msg in history_result["interactions"]
-                        ]
-
-                        current_conversation = ConversationDetail(
-                            metadata=metadata, messages=messages
-                        )
-
-                notification_data = c.get_notifications()
-                notifications = [
-                    ConversationNotification(
-                        conversation_id=notif["conversation_id"],
-                        conversation_name=notif["conversation_name"],
-                        message_id=notif["message_id"],
-                        message=notif["message"],
-                        role=notif["role"],
-                        timestamp=notif["timestamp"],
+                    page_info = PageInfo(
+                        has_next_page=end_idx < total_items,
+                        has_previous_page=page > 1,
+                        total_pages=total_pages,
+                        total_items=total_items,
+                        current_page=page,
+                        items_per_page=limit,
                     )
-                    for notif in notification_data
-                ]
 
-                return AppState(
-                    user=user_detail,
-                    conversations=conversation_connection,
-                    current_conversation=current_conversation,
-                    notifications=(notifications if notifications else None),
-                )
+                    conversation_connection = ConversationConnection(
+                        page_info=page_info, edges=conversations[start_idx:end_idx]
+                    )
+
+                    # Get current conversation if ID provided
+                    current_conversation = None
+                    if conversation_id:
+                        conversation_name = get_conversation_name_by_id(
+                            conversation_id=conversation_id,
+                            user_id=auth_manager.user_id,
+                        )
+                        with Conversations(
+                            user=user, conversation_name=conversation_name
+                        ) as c:
+                            conv_result = {
+                                "conversations": c.get_conversations_with_detail()
+                            }
+
+                            if conversation_id in conv_result["conversations"]:
+                                details = conv_result["conversations"][conversation_id]
+                                metadata = ConversationMetadata(
+                                    id=conversation_id,
+                                    name=details["name"],
+                                    agent_id=details["agent_id"],
+                                    created_at=details["created_at"],
+                                    updated_at=details["updated_at"],
+                                    has_notifications=details["has_notifications"],
+                                    summary=details["summary"],
+                                    attachment_count=details["attachment_count"],
+                                )
+
+                                with Conversations(
+                                    user=user, conversation_name=metadata.name
+                                ) as c:
+                                    history_result = c.get_conversation()
+
+                                    messages = [
+                                        ConversationMessage(
+                                            id=msg["id"],
+                                            role=msg["role"],
+                                            message=msg["message"],
+                                            timestamp=msg["timestamp"],
+                                            updated_at=msg["updated_at"],
+                                            updated_by=msg["updated_by"],
+                                            feedback_received=msg["feedback_received"],
+                                        )
+                                        for msg in history_result["interactions"]
+                                    ]
+
+                                    current_conversation = ConversationDetail(
+                                        metadata=metadata, messages=messages
+                                    )
+
+                    notification_data = c.get_notifications()
+                    notifications = [
+                        ConversationNotification(
+                            conversation_id=notif["conversation_id"],
+                            conversation_name=notif["conversation_name"],
+                            message_id=notif["message_id"],
+                            message=notif["message"],
+                            role=notif["role"],
+                            timestamp=notif["timestamp"],
+                        )
+                        for notif in notification_data
+                    ]
+
+                    return AppState(
+                        user=user_detail,
+                        conversations=conversation_connection,
+                        current_conversation=current_conversation,
+                        notifications=(notifications if notifications else None),
+                    )
 
             # Subscribe to relevant channels
             broadcaster = Broadcast("memory://")
@@ -1710,45 +1717,45 @@ class Query:
     ) -> ConversationConnection:
         """Get paginated list of conversations with details"""
         user, auth, magical = await get_user_from_context(info)
-        c = Conversations(user=user)
-        result = c.get_conversations_with_detail()
+        with Conversations(user=user) as c:
+            result = c.get_conversations_with_detail()
 
-        # Convert dictionary to list and sort by updated_at
-        conversations = [
-            ConversationMetadata(
-                id=id,
-                name=details["name"],
-                agent_id=details["agent_id"],
-                created_at=details["created_at"],
-                updated_at=details["updated_at"],
-                has_notifications=details["has_notifications"],
-                summary=details["summary"],
-                attachment_count=details["attachment_count"],
+            # Convert dictionary to list and sort by updated_at
+            conversations = [
+                ConversationMetadata(
+                    id=id,
+                    name=details["name"],
+                    agent_id=details["agent_id"],
+                    created_at=details["created_at"],
+                    updated_at=details["updated_at"],
+                    has_notifications=details["has_notifications"],
+                    summary=details["summary"],
+                    attachment_count=details["attachment_count"],
+                )
+                for id, details in result.items()
+            ]
+            conversations.sort(key=lambda x: x.updated_at, reverse=True)
+
+            # Handle pagination
+            page = pagination.page if pagination else 1
+            limit = pagination.limit if pagination else 100
+            total_items = len(conversations)
+            total_pages = -(-total_items // limit)  # Ceiling division
+            start_idx = (page - 1) * limit
+            end_idx = start_idx + limit
+
+            page_info = PageInfo(
+                has_next_page=end_idx < total_items,
+                has_previous_page=page > 1,
+                total_pages=total_pages,
+                total_items=total_items,
+                current_page=page,
+                items_per_page=limit,
             )
-            for id, details in result.items()
-        ]
-        conversations.sort(key=lambda x: x.updated_at, reverse=True)
 
-        # Handle pagination
-        page = pagination.page if pagination else 1
-        limit = pagination.limit if pagination else 100
-        total_items = len(conversations)
-        total_pages = -(-total_items // limit)  # Ceiling division
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-
-        page_info = PageInfo(
-            has_next_page=end_idx < total_items,
-            has_previous_page=page > 1,
-            total_pages=total_pages,
-            total_items=total_items,
-            current_page=page,
-            items_per_page=limit,
-        )
-
-        return ConversationConnection(
-            page_info=page_info, edges=conversations[start_idx:end_idx]
-        )
+            return ConversationConnection(
+                page_info=page_info, edges=conversations[start_idx:end_idx]
+            )
 
     @strawberry.field
     async def conversation(
@@ -1760,47 +1767,47 @@ class Query:
             conversation_id=conversation_id, user_id=magical.user_id
         )
         # Get conversation metadata
-        c = Conversations(user=user, conversation_name=conversation_name)
-        result = {"conversations": c.get_conversations_with_detail()}
-        if conversation_id not in result["conversations"]:
-            raise Exception(f"Conversation {conversation_id} not found")
+        with Conversations(user=user, conversation_name=conversation_name) as c:
+            result = {"conversations": c.get_conversations_with_detail()}
+            if conversation_id not in result["conversations"]:
+                raise Exception(f"Conversation {conversation_id} not found")
 
-        details = result.conversations[conversation_id]
-        metadata = ConversationMetadata(
-            id=conversation_id,
-            name=details["name"],
-            agent_id=details["agent_id"],
-            created_at=details["created_at"],
-            updated_at=details["updated_at"],
-            has_notifications=details["has_notifications"],
-            summary=details["summary"],
-            attachment_count=details["attachment_count"],
-        )
-
-        # Get messages with pagination
-        c = Conversations(user=user, conversation_name=metadata.name)
-        history_result = c.get_conversation()
-
-        messages = [
-            ConversationMessage(
-                id=msg["id"],
-                role=msg["role"],
-                message=msg["message"],
-                timestamp=msg["timestamp"],
-                updated_at=msg["updated_at"],
-                updated_by=msg["updated_by"],
-                feedback_received=msg["feedback_received"],
+            details = result.conversations[conversation_id]
+            metadata = ConversationMetadata(
+                id=conversation_id,
+                name=details["name"],
+                agent_id=details["agent_id"],
+                created_at=details["created_at"],
+                updated_at=details["updated_at"],
+                has_notifications=details["has_notifications"],
+                summary=details["summary"],
+                attachment_count=details["attachment_count"],
             )
-            for msg in history_result["interactions"]
-        ]
 
-        # Apply pagination if provided
-        if pagination:
-            start_idx = (pagination.page - 1) * pagination.limit
-            end_idx = start_idx + pagination.limit
-            messages = messages[start_idx:end_idx]
+            # Get messages with pagination
+            with Conversations(user=user, conversation_name=metadata.name) as c:
+                history_result = c.get_conversation()
 
-        return ConversationDetail(metadata=metadata, messages=messages)
+                messages = [
+                    ConversationMessage(
+                        id=msg["id"],
+                        role=msg["role"],
+                        message=msg["message"],
+                        timestamp=msg["timestamp"],
+                        updated_at=msg["updated_at"],
+                        updated_by=msg["updated_by"],
+                        feedback_received=msg["feedback_received"],
+                    )
+                    for msg in history_result["interactions"]
+                ]
+
+                # Apply pagination if provided
+                if pagination:
+                    start_idx = (pagination.page - 1) * pagination.limit
+                    end_idx = start_idx + pagination.limit
+                    messages = messages[start_idx:end_idx]
+
+                return ConversationDetail(metadata=metadata, messages=messages)
 
     @strawberry.field
     async def notifications(
@@ -1808,7 +1815,8 @@ class Query:
     ) -> NotificationConnection:
         """Get paginated notifications"""
         user, auth, magical = await get_user_from_context(info)
-        result = Conversations(user=user).get_notifications()
+        with Conversations(user=user) as c:
+            result = c.get_notifications()
 
         notifications = [
             ConversationNotification(
@@ -2419,25 +2427,25 @@ class Mutation:
         """Create a new conversation"""
         user, auth, magical = await get_user_from_context(info)
         model = ConversationHistoryModel(**input.__dict__)
-        c = Conversations(user=user)
-        result = c.new_conversation(
-            conversation_content=model.conversation_content,
-        )
-
-        messages = [
-            ConversationMessage(
-                id=msg["id"],
-                role=msg["role"],
-                message=msg["message"],
-                timestamp=msg["timestamp"],
-                updated_at=msg["updated_at"],
-                updated_by=msg["updated_by"],
-                feedback_received=msg["feedback_received"],
+        with Conversations(user=user) as c:
+            result = c.new_conversation(
+                conversation_content=model.conversation_content,
             )
-            for msg in result
-        ]
 
-        return ConversationHistory(messages=messages)
+            messages = [
+                ConversationMessage(
+                    id=msg["id"],
+                    role=msg["role"],
+                    message=msg["message"],
+                    timestamp=msg["timestamp"],
+                    updated_at=msg["updated_at"],
+                    updated_by=msg["updated_by"],
+                    feedback_received=msg["feedback_received"],
+                )
+                for msg in result
+            ]
+
+            return ConversationHistory(messages=messages)
 
     @strawberry.mutation
     async def delete_conversation(
@@ -2446,9 +2454,9 @@ class Mutation:
         """Delete a conversation"""
         user, auth, magical = await get_user_from_context(info)
         model = ConversationHistoryModel(**input.__dict__)
-        c = Conversations(user=user, conversation_name=model.conversation_name)
-        result = c.delete_conversation()
-        return MutationResponse(success=True, message=result)
+        with Conversations(user=user, conversation_name=model.conversation_name) as c:
+            result = c.delete_conversation()
+            return MutationResponse(success=True, message=result)
 
     @strawberry.mutation
     async def rename_conversation(
@@ -2465,23 +2473,25 @@ class Mutation:
             conversation_name=conversation_name,
             new_conversation_name=new_conversation_name,
         )
-        c = Conversations(user=user, conversation_name=model.conversation_name)
-        result = c.rename_conversation(
-            new_conversation_name=model.new_conversation_name
-        )
-        return MutationResponse(
-            success=True,
-            message=f"Conversation renamed to {result}",
-        )
+        with Conversations(user=user, conversation_name=model.conversation_name) as c:
+            result = c.rename_conversation(
+                new_conversation_name=model.new_conversation_name
+            )
+            return MutationResponse(
+                success=True,
+                message=f"Conversation renamed to {result}",
+            )
 
     @strawberry.mutation
     async def update_message(self, info, input: UpdateMessageInput) -> MutationResponse:
         """Update a conversation message"""
         user, auth, magical = await get_user_from_context(info)
         model = UpdateConversationHistoryMessageModel(**input.__dict__)
-        c = Conversations(user=user, conversation_name=model.conversation_name)
-        result = c.update_message(message=model.message, new_message=model.new_message)
-        return MutationResponse(success=True, message=result.message)
+        with Conversations(user=user, conversation_name=model.conversation_name) as c:
+            result = c.update_message(
+                message=model.message, new_message=model.new_message
+            )
+            return MutationResponse(success=True, message=result.message)
 
     @strawberry.mutation
     async def update_message_by_id(
@@ -2490,11 +2500,11 @@ class Mutation:
         """Update a message by its ID"""
         user, auth, magical = await get_user_from_context(info)
         model = UpdateMessageModel(**input.__dict__)
-        c = Conversations(user=user, conversation_name=model.conversation_name)
-        result = c.update_message_by_id(
-            message_id=message_id, new_message=model.new_message
-        )
-        return MutationResponse(success=True, message=result)
+        with Conversations(user=user, conversation_name=model.conversation_name) as c:
+            result = c.update_message_by_id(
+                message_id=message_id, new_message=model.new_message
+            )
+            return MutationResponse(success=True, message=result)
 
     @strawberry.mutation
     async def delete_message(
@@ -2503,9 +2513,9 @@ class Mutation:
         """Delete a message by its content"""
         user, auth, magical = await get_user_from_context(info)
         model = ConversationHistoryMessageModel(**input.__dict__)
-        c = Conversations(user=user, conversation_name=model.conversation_name)
-        result = c.delete_message(message=model.message)
-        return MutationResponse(success=True, message=result)
+        with Conversations(user=user, conversation_name=model.conversation_name) as c:
+            result = c.delete_message(message=model.message)
+            return MutationResponse(success=True, message=result)
 
     @strawberry.mutation
     async def delete_message_by_id(
@@ -2514,9 +2524,9 @@ class Mutation:
         """Delete a message by its ID"""
         user, auth, magical = await get_user_from_context(info)
         model = DeleteMessageModel(conversation_name=conversation_name)
-        c = Conversations(user=user, conversation_name=model.conversation_name)
-        result = c.delete_message_by_id(message_id=message_id)
-        return MutationResponse(success=True, message=result.message)
+        with Conversations(user=user, conversation_name=model.conversation_name) as c:
+            result = c.delete_message_by_id(message_id=message_id)
+            return MutationResponse(success=True, message=result.message)
 
     @strawberry.mutation
     async def fork_conversation(
@@ -2525,11 +2535,11 @@ class Mutation:
         """Fork a conversation"""
         user, auth, magical = await get_user_from_context(info)
         model = ConversationFork(**input.__dict__)
-        c = Conversations(user=user, conversation_name=model.conversation_name)
-        result = c.fork_conversation(
-            message_id=model.message_id,
-        )
-        return MutationResponse(success=True, message=result.message)
+        with Conversations(user=user, conversation_name=model.conversation_name) as c:
+            result = c.fork_conversation(
+                message_id=model.message_id,
+            )
+            return MutationResponse(success=True, message=result.message)
 
     @strawberry.mutation
     async def log_interaction(
@@ -2538,47 +2548,47 @@ class Mutation:
         """Log a conversation interaction"""
         user, auth, magical = await get_user_from_context(info)
         model = LogInteraction(**input.__dict__)
-        c = Conversations(user=user, conversation_name=model.conversation_name)
-        result = c.log_interaction(
-            message=model.message,
-            role=model.role,
-        )
-        # Create message event
-        message = ConversationMessage(
-            id=result.message,
-            role=input.role,
-            message=input.message,
-            timestamp=datetime.now(),
-            updated_at=datetime.now(),
-            updated_by=None,
-            feedback_received=False,
-        )
-
-        # Broadcast the new message
-        async with get_broadcaster() as broadcaster:
-            await broadcaster.publish(
-                channel=f"messages_{input.conversation_name}",
-                message=MessageEvent(
-                    conversation_id=input.conversation_name, message=message
-                ),
+        with Conversations(user=user, conversation_name=model.conversation_name) as c:
+            result = c.log_interaction(
+                message=model.message,
+                role=model.role,
+            )
+            # Create message event
+            message = ConversationMessage(
+                id=result.message,
+                role=input.role,
+                message=input.message,
+                timestamp=datetime.now(),
+                updated_at=datetime.now(),
+                updated_by=None,
+                feedback_received=False,
             )
 
-            # If this is a notification, broadcast it as well
-            if not input.message.startswith("[ACTIVITY]"):
-                notification = ConversationNotification(
-                    conversation_id=input.conversation_name,
-                    conversation_name=input.conversation_name,
-                    message_id=result.message,
-                    message=input.message,
-                    role=input.role,
-                    timestamp=datetime.now(),
-                )
+            # Broadcast the new message
+            async with get_broadcaster() as broadcaster:
                 await broadcaster.publish(
-                    channel=f"notifications_{user}",
-                    message=NotificationEvent(notification=notification),
+                    channel=f"messages_{input.conversation_name}",
+                    message=MessageEvent(
+                        conversation_id=input.conversation_name, message=message
+                    ),
                 )
 
-        return MutationResponse(success=True, message=result.message)
+                # If this is a notification, broadcast it as well
+                if not input.message.startswith("[ACTIVITY]"):
+                    notification = ConversationNotification(
+                        conversation_id=input.conversation_name,
+                        conversation_name=input.conversation_name,
+                        message_id=result.message,
+                        message=input.message,
+                        role=input.role,
+                        timestamp=datetime.now(),
+                    )
+                    await broadcaster.publish(
+                        channel=f"notifications_{user}",
+                        message=NotificationEvent(notification=notification),
+                    )
+
+            return MutationResponse(success=True, message=result.message)
 
     @strawberry.mutation
     async def create_prompt(self, info, input: CreatePromptInput) -> PromptResponse:
@@ -2845,8 +2855,10 @@ class Mutation:
 
         collection_number = input.collection_number
         if len(collection_number) > 4:
-            conversation = Conversations(conversation_name=collection_number, user=user)
-            collection_number = conversation.get_conversation_id()
+            with Conversations(
+                conversation_name=collection_number, user=user
+            ) as conversation:
+                collection_number = conversation.get_conversation_id()
         memories = Memories(
             agent_name=agent_name,
             collection_number=collection_number,
@@ -2879,9 +2891,11 @@ class Mutation:
         conversation_name = None
 
         if len(collection_number) > 4:
-            conversation = Conversations(conversation_name=collection_number, user=user)
-            collection_number = conversation.get_conversation_id()
-            conversation_name = collection_number
+            with Conversations(
+                conversation_name=collection_number, user=user
+            ) as conversation:
+                collection_number = conversation.get_conversation_id()
+                conversation_name = collection_number
 
         agent = AGiXT(
             user=user,
@@ -2948,11 +2962,13 @@ class Mutation:
             conversation_name=conversation_name,
         )
 
-        conversation = Conversations(conversation_name=conversation_name, user=user)
-        conversation.log_interaction(
-            role=agent_name,
-            message=f"URL [{url}]({url}) learned on {timestamp} to collection `{input.collection_number}`.",
-        )
+        with Conversations(
+            conversation_name=conversation_name, user=user
+        ) as conversation:
+            conversation.log_interaction(
+                role=agent_name,
+                message=f"URL [{url}]({url}) learned on {timestamp} to collection `{input.collection_number}`.",
+            )
 
         return True
 
@@ -3198,8 +3214,10 @@ class Mutation:
 
         conversation_id = None
         if input.conversation_name:
-            conversation = Conversations(conversation_name=input.conversation_name)
-            conversation_id = conversation.get_conversation_id()
+            with Conversations(
+                conversation_name=input.conversation_name
+            ) as conversation:
+                conversation_id = conversation.get_conversation_id()
 
         extensions = Extensions(
             agent_name=agent_name,
@@ -3216,10 +3234,10 @@ class Mutation:
         )
 
         if input.conversation_name and command_output:
-            conversation = Conversations(
+            with Conversations(
                 conversation_name=input.conversation_name, user=user
-            )
-            conversation.log_interaction(role=agent_name, message=command_output)
+            ) as conversation:
+                conversation.log_interaction(role=agent_name, message=command_output)
 
         return CommandResult(response=command_output if command_output else "")
 

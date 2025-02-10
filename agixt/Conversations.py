@@ -19,53 +19,67 @@ logging.basicConfig(
 )
 
 
-def get_conversation_id_by_name(conversation_name, user_id):
-    user_id = str(user_id)
-    session = get_session()
-    user = session.query(User).filter(User.id == user_id).first()
-    conversation = (
-        session.query(Conversation)
-        .filter(
-            Conversation.name == conversation_name,
-            Conversation.user_id == user_id,
-        )
-        .first()
-    )
-    if not conversation:
-        with Conversations(conversation_name=conversation_name, user=user.email) as c:
-            conversation_id = c.get_conversation_id()
-    else:
-        conversation_id = str(conversation.id)
-    session.close()
-    return conversation_id
-
-
-def get_conversation_name_by_id(conversation_id, user_id):
-    if conversation_id == "-":
-        conversation_id = get_conversation_id_by_name("-", user_id)
-        return "-"
-    session = get_session()
-    conversation = (
-        session.query(Conversation)
-        .filter(
-            Conversation.id == conversation_id,
-            Conversation.user_id == user_id,
-        )
-        .first()
-    )
-    if not conversation:
-        session.close()
-        return "-"
-    conversation_name = conversation.name
-    session.close()
-    return conversation_name
-
-
 from typing import Optional
 from sqlalchemy.orm import Session
 
 
 class Conversations:
+    @staticmethod
+    def get_conversation_id_by_name(conversation_name: str, user_id: str) -> str:
+        user_id = str(user_id)
+        session = get_session()
+
+        try:
+            user = session.query(User).filter(User.id == user_id).first()
+            conversation = (
+                session.query(Conversation)
+                .filter(
+                    Conversation.name == conversation_name,
+                    Conversation.user_id == user_id,
+                )
+                .first()
+            )
+
+            if not conversation:
+                # Create new conversation through the class
+                with Conversations(
+                    conversation_name=conversation_name, user=user.email
+                ) as c:
+                    conversation_id = c.get_conversation_id()
+            else:
+                conversation_id = str(conversation.id)
+
+            return conversation_id
+
+        finally:
+            session.close()
+
+    @staticmethod
+    def get_conversation_name_by_id(conversation_id: str, user_id: str) -> str:
+        if conversation_id == "-":
+            conversation_id = Conversations.get_conversation_id_by_name("-", user_id)
+            return "-"
+
+        session = get_session()
+
+        try:
+            conversation = (
+                session.query(Conversation)
+                .filter(
+                    Conversation.id == conversation_id,
+                    Conversation.user_id == user_id,
+                )
+                .first()
+            )
+
+            if not conversation:
+                return "-"
+
+            return conversation.name
+
+        finally:
+            session.close()
+
     def __init__(self, conversation_name: str = "-", user: str = DEFAULT_USER):
         self.conversation_name = conversation_name
         self.user = user
