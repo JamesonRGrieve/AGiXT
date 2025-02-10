@@ -838,12 +838,7 @@ class Conversations:
     def set_conversation_summary(self, summary: str):
         if not self.conversation:
             return ""
-        conversation = (
-            self._db.query(Conversation)
-            .filter(Conversation.id == conversation.id)
-            .first()
-        )
-        conversation.summary = summary
+        self.conversation.summary = summary
         self._db.commit()
         return summary
 
